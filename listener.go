@@ -40,5 +40,7 @@ func (pl *plugin) onPermissionsSetup(e *proxy.PermissionsSetupEvent) {
 
 // onDisconnect unloads cached data for the player.
 func (pl *plugin) onDisconnect(e *proxy.DisconnectEvent) {
-	pl.manager.Unload(e.Player().ID())
+	id := e.Player().ID()
+	pl.manager.Unload(id)
+	pl.refresher.forget(id)
 }

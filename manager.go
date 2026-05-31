@@ -20,6 +20,11 @@ type Manager struct {
 	mu     sync.RWMutex
 	groups map[string]*Group // keyed by lower-cased name
 	users  map[uuid.UUID]*User
+
+	// OnInvalidate, if set, is called after an online user's data has been
+	// refreshed (e.g. by a messaging update), so the proxy can resend their
+	// command list. Safe to set once during init.
+	OnInvalidate func(id uuid.UUID)
 }
 
 func NewManager(storage StorageProvider, cfg *Config, log logr.Logger) *Manager {
@@ -100,6 +105,10 @@ func (m *Manager) InvalidateUser(ctx context.Context, id uuid.UUID) {
 	}
 	if _, err := m.LoadUser(ctx, id, ""); err != nil {
 		m.log.Error(err, "failed to reload user after update message", "uuid", id)
+		return
+	}
+	if m.OnInvalidate != nil {
+		m.OnInvalidate(id)
 	}
 }
 
@@ -119,6 +128,10 @@ func (m *Manager) InvalidateAll(ctx context.Context) {
 	for _, id := range ids {
 		if _, err := m.LoadUser(ctx, id, ""); err != nil {
 			m.log.Error(err, "failed to reload user after update message", "uuid", id)
+			continue
+		}
+		if m.OnInvalidate != nil {
+			m.OnInvalidate(id)
 		}
 	}
 }

@@ -17,6 +17,9 @@ on the proxy match their permissions on the backend servers.
 - **Messaging** — consumes LuckPerms `update` / `userupdate` messages over the
   `luckperms:update` Postgres channel and refreshes its caches live. Fully wire
   compatible with Java LuckPerms instances.
+- **Live command refresh** — when a player's permissions change, their client
+  command list is resent so proxy commands they just gained/lost appear/disappear
+  in tab-complete immediately.
 - **Storage** — PostgreSQL, **read-only**. The proxy never writes to the database.
 - **Configuration** — a LuckPerms-compatible `config.yml`. An existing LuckPerms
   config can be reused as-is (unknown keys are ignored).
@@ -171,6 +174,21 @@ string to disable the behaviour entirely.
 3. A background goroutine `LISTEN`s on the `luckperms:update` channel. Incoming
    `update` messages reload all data; `userupdate` messages reload a single user.
 4. On `DisconnectEvent` the player's cached data is dropped.
+
+### Command refresh on permission change
+
+A client receives its command tree once (sent by the backend and forwarded by
+Gate, which injects the proxy's own commands filtered by permission). When this
+plugin reloads a player after an `update` / `userupdate` message, it resends a
+freshly filtered `AvailableCommands` packet so commands the player just gained or
+lost show up (or disappear) in tab-complete without a reconnect.
+
+To do this it snapshots the last command tree sent to each player (via
+`PlayerAvailableCommandsEvent`), then on a permission change keeps the backend
+commands, strips all proxy command names, and re-adds the proxy commands the
+player may currently use. This only affects **proxy** commands (the ones whose
+visibility this plugin controls); backend commands are refreshed by the backend
+itself. It is a no-op when `announceProxyCommands` is disabled in the Gate config.
 
 ### Database tables read
 

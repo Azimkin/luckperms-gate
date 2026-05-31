@@ -58,9 +58,15 @@ var Plugin = proxy.Plugin{
 		}
 
 		pl := &plugin{proxy: p, cfg: cfg, storage: storage, manager: manager, log: log}
+		pl.refresher = newCommandRefresher(pl)
+
+		// When a player's permissions change, resend their command list so newly
+		// granted/revoked proxy commands appear/disappear client-side.
+		manager.OnInvalidate = pl.refresher.resend
 
 		event.Subscribe(p.Event(), 0, pl.onPermissionsSetup)
 		event.Subscribe(p.Event(), 0, pl.onDisconnect)
+		event.Subscribe(p.Event(), 0, pl.refresher.onAvailableCommands)
 
 		messenger, err := newMessenger(ctx, cfg, storage, manager, log)
 		if err != nil {
@@ -85,11 +91,12 @@ var Plugin = proxy.Plugin{
 }
 
 type plugin struct {
-	proxy   *proxy.Proxy
-	cfg     *Config
-	storage StorageProvider
-	manager *Manager
-	log     logr.Logger
+	proxy     *proxy.Proxy
+	cfg       *Config
+	storage   StorageProvider
+	manager   *Manager
+	refresher *commandRefresher
+	log       logr.Logger
 }
 
 func writeDefaultConfig(path string) error {
