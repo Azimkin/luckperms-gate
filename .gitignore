@@ -1,0 +1,10 @@
+# Generated at runtime next to the proxy working directory
+/config.yml
+luckperms/config.yml
+
+# Build / editor artifacts
+*.exe
+*.test
+*.out
+.idea/
+.vscode/
